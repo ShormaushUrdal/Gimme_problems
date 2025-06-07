@@ -1,57 +1,83 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
+import { GoogleGenAI } from "@google/genai";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
+const ai = new GoogleGenAI({
+  apiKey: process.env.GOOGLE_API_KEY || "your-fallback-api-key",
+});
 
-export async function POST(req: Request) {
-  console.log(process.env.GOOGLE_API_KEY!)
+async function generate(prompt: string) {
   try {
-    const { prompt, type } = await req.json();
-    
-    if (!prompt) {
-      return NextResponse.json(
-        { error: "Prompt is required" },
-        { status: 400 }
-      );
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+    return (
+      response?.candidates?.[0]?.content?.parts?.[0]?.text || "No response from Gemini."
+    );
+  } catch (error) {
+    console.error("Gemini Generation Error:", error);
+    throw error;
+  }
+}
+
+// API route handler
+export async function POST(req: Request) {
+  try {
+    const { type, prompt } = await req.json();
+
+    if (!prompt || !type) {
+      return NextResponse.json({ error: "Prompt and type are required." }, { status: 400 });
     }
 
-    let finalPrompt = prompt;
-    
-    // Handle different types of prompts
+    let finalPrompt = "";
+
     switch (type) {
       case "summarize":
         finalPrompt = `Summarize the following text:\n\n${prompt}`;
         break;
+
       case "explain-code":
         finalPrompt = `Explain what the following code does:\n\n${prompt}`;
         break;
+
       case "generate-quiz":
-        finalPrompt = `Generate 5 MCQ questions on the topic "${prompt}" with answers.`;
+        finalPrompt = `Generate 5 multiple choice questions with answers based on the topic: "${prompt}".`;
         break;
+
       case "resume-helper":
-        const { name, skills } = JSON.parse(prompt);
-        finalPrompt = `Write a professional resume summary for a person named ${name} skilled in ${skills}`;
+        let parsed = typeof prompt === "string" ? JSON.parse(prompt) : prompt;
+        const { name = "the candidate", skills = "", extraDetails = "" } = parsed;
+        finalPrompt = `Write a short, professional resume summary for ${name}, who is skilled in ${skills}. Extra details: ${extraDetails}`;
         break;
+
       case "cp-helper":
-        finalPrompt = `You are a competitive programming expert. 
-          Analyze the following problem and do the following:
-          1. Explain the approach/algorithm to solve it
-          2. Suggest optimized code in C++ or Java (mention language)
-          3. Highlight edge cases\n\nProblem:\n${prompt}`;
+        if (!prompt.trim()) {
+          return NextResponse.json({ error: "Problem description is required." }, { status: 400 });
+        }
+        finalPrompt = `You are a competitive programming expert.
+Analyze the following problem and do the following:
+1. Explain the approach/algorithm to solve it
+2. Provide optimized code in C++ or Java
+3. Highlight edge cases
+
+Problem:
+${prompt}`;
+        break;
+
+      case "chat":
+      default:
+        finalPrompt = prompt;
         break;
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-    const result = await model.generateContent(finalPrompt);
-    const response = await result.response;
-    const text = response.text();
+    const result = await generate(finalPrompt);
+    return NextResponse.json({ result });
 
-    return NextResponse.json({ result: text });
-  } catch (error) {
-    console.error("Error in chat API:", error);
+  } catch (err) {
+    console.error("API Error:", err);
     return NextResponse.json(
-      { error: "Failed to process request" },
+      { error: (err as Error)?.message || "Internal Server Error" },
       { status: 500 }
     );
   }
-} 
+}
