@@ -11,14 +11,84 @@ interface Problem {
   tags: string[];
 }
 
+const contesttypesstrings = ["Div. 1 + Div. 2", "Div. 1", "Div. 2", "Div. 3", "Div. 4",
+                            "Educational", "ICPC", "April Fools"];
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'problems' | 'chat'>('problems');
   const [selectedDifficulty, setSelectedDifficulty] = useState<number | null>(null);
   const [selectedEndDifficulty, setSelectedEndDifficulty] = useState<number | null>(null);
   const [tags, setTags] = useState<string[]>([]);
+  const [selectedContestTypes, setSelectedContestTypes] = useState<string[]>([]);
   const [randomProblems, setRandomProblems] = useState<Problem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  
+  const [contestIdToName, setContestIdToName] = useState<Record<number, string>>({});
+  const [isContestDataLoaded, setIsContestDataLoaded] = useState<boolean>(false);
+  
+  let contestDataPromise: Promise<void> | null = null;
+  
+  const getContestData = async () => {
+    if (isContestDataLoaded) return;
+    
+    if (!contestDataPromise) {
+      contestDataPromise = fetch("https://codeforces.com/api/contest.list?gym=false")
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === "OK") {
+            console.log("Contest data is ready");
+            const mapping: Record<number, string> = {};
+            data.result.forEach((contest: any) => {
+              mapping[contest.id] = contest.name;
+            });
+            setContestIdToName(mapping);
+            setIsContestDataLoaded(true);
+          } else {
+            console.error("Failed to load contest data");
+          }
+        })
+        .catch(error => {
+          console.error("Error loading contest data:", error);
+        });
+    }
+    
+    return contestDataPromise;
+  };
+
+  const checkValidContest = (problem: Problem) => {
+    if (selectedContestTypes.length === 0) {
+      return true;
+    }
+
+    const contestName = contestIdToName[problem.contestId] || "";
+    const contestNameLower = contestName.toLowerCase();
+    console.log(contestNameLower);
+    return selectedContestTypes.some(contestType => {
+      const typeLower = contestType.toLowerCase();
+      switch (typeLower) {
+        case "div. 2":
+          return contestNameLower.includes("div. 2") && 
+                !contestNameLower.includes("div. 1 + div. 2");
+        case "div. 3":
+          return contestNameLower.includes("div. 3");
+        case "div. 4":
+          return contestNameLower.includes("div. 4");
+        case "div. 1":
+          return contestNameLower.includes("div. 1") && 
+                !contestNameLower.includes("div. 1 + div. 2");
+        case "div. 1 + div. 2":
+          return contestNameLower.includes("div. 1 + div. 2");
+        case "educational":
+          return contestNameLower.includes("educational");
+        case "icpc":
+          return contestNameLower.includes("icpc");
+        case "april fools":
+          return contestNameLower.includes("april fool");
+      }
+    });
+    return false;
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -30,6 +100,11 @@ export default function Home() {
     try {
       setLoading(true);
       setError("");
+      
+      if (!isContestDataLoaded) {
+        await getContestData();
+      }
+      
       const tagQuery = tags.length > 0 ? (tags.map(tag => tag.replace(/ /g, "+")).join(";")) : "";
       const response = await fetch(
         `https://codeforces.com/api/problemset.problems?tags=${tagQuery}`
@@ -41,7 +116,8 @@ export default function Home() {
         const filteredProblems = data.result.problems.filter(
           (problem: Problem) =>
             problem.rating >= selectedDifficulty &&
-            problem.rating <= selectedEndDifficulty
+            problem.rating <= selectedEndDifficulty &&
+            checkValidContest(problem)
         );
 
         if (filteredProblems.length > 0) {
@@ -65,7 +141,7 @@ export default function Home() {
 
           setRandomProblems(selectedProblems);
         } else {
-          alert("No problems found for the selected difficulty range.");
+          alert("No problems found for the selected criteria.");
         }
       } else {
         setError("Failed to fetch problems data");
@@ -78,6 +154,8 @@ export default function Home() {
     }
   };
 
+  getContestData();
+
   const handleDifficultyChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
     isEndRange = false
@@ -85,11 +163,27 @@ export default function Home() {
     const value = parseInt(event.target.value, 10);
     isEndRange ? setSelectedEndDifficulty(value) : setSelectedDifficulty(value);
   };
+  
+  const handleContestTypeToggle = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedOptions = Array.from(event.target.selectedOptions, option => option.value);
+    const changedOption = selectedOptions.find(option => !selectedContestTypes.includes(option)) ||
+      selectedContestTypes.find(tag => !selectedOptions.includes(tag));
+    if (changedOption) {
+      setSelectedContestTypes(currentTypes => {
+        if (currentTypes.includes(changedOption)) {
+          return currentTypes.filter(t => t !== changedOption);
+        } else {
+          return [...currentTypes, changedOption];
+        }
+      });
+    }
+    event.preventDefault();
+  };
 
   const handleTagToggle = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedOptions = Array.from(event.target.selectedOptions, option => option.value);
-    const changedOption = selectedOptions.find(option => !tags.includes(option)) || 
-                         tags.find(tag => !selectedOptions.includes(tag));    
+    const changedOption = selectedOptions.find(option => !tags.includes(option)) ||
+      tags.find(tag => !selectedOptions.includes(tag));
     if (changedOption) {
       setTags(currentTags => {
         if (currentTags.includes(changedOption)) {
@@ -102,8 +196,18 @@ export default function Home() {
     event.preventDefault();
   };
 
+  // Helper function to remove a tag
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
+  };
+
+  // Helper function to remove a contest type
+  const removeContestType = (typeToRemove: string) => {
+    setSelectedContestTypes(selectedContestTypes.filter(t => t !== typeToRemove));
+  };
+
   const getProblemColorByRating = (rating: number) => {
-    switch(true) {
+    switch (true) {
       case rating <= 1199:
         return '#808080';
       case rating <= 1399:
@@ -133,21 +237,19 @@ export default function Home() {
       <div className="flex justify-center space-x-4 p-4 bg-gray-800 sticky top-0 z-50">
         <button
           onClick={() => setActiveTab('problems')}
-          className={`px-6 py-3 rounded-lg font-semibold transition duration-300 ${
-            activeTab === 'problems'
+          className={`px-6 py-3 rounded-lg font-semibold transition duration-300 ${activeTab === 'problems'
               ? 'bg-blue-600 text-white'
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
+            }`}
         >
           Problem Finder
         </button>
         <button
           onClick={() => setActiveTab('chat')}
-          className={`px-6 py-3 rounded-lg font-semibold transition duration-300 ${
-            activeTab === 'chat'
+          className={`px-6 py-3 rounded-lg font-semibold transition duration-300 ${activeTab === 'chat'
               ? 'bg-blue-600 text-white'
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
+            }`}
         >
           AI Assistant
         </button>
@@ -172,7 +274,7 @@ export default function Home() {
                   <h2 className="text-xl font-semibold mb-4">Select Tags</h2>
                   <select
                     multiple
-                    className="w-full p-4 border border-gray-600 bg-gray-800 rounded-lg text-gray-300"
+                    className="w-full p-4 border border-gray-600 bg-gray-800 rounded-lg text-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition duration-200"
                     onChange={handleTagToggle}
                     value={tags}
                     size={6}
@@ -188,30 +290,92 @@ export default function Home() {
                       "sortings", "strings", "ternary search", "trees",
                       "two pointers",
                     ].map((tag) => (
-                      <option 
-                        value={tag} 
+                      <option
+                        value={tag}
                         key={tag}
-                        className={`p-2 ${tags.includes(tag) ? 'bg-blue-900' : ''}`}
+                        className={`p-2 hover:bg-blue-800 transition duration-150 ${tags.includes(tag) ? 'bg-blue-900 text-blue-300' : ''}`}
                       >
                         {tag} {tags.includes(tag) ? '✓' : ''}
                       </option>
                     ))}
                   </select>
+                  {tags.length > 0 && (
+                    <p className="text-sm text-gray-400 mt-2">
+                      Click on a selected tag below to remove it, or click on the tag in the list above to deselect it.
+                    </p>
+                  )}
                 </div>
 
                 {tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 justify-center">
                     {tags.map(tag => (
                       <span
                         key={tag}
-                        className="bg-blue-600 px-3 py-1 rounded-full text-sm font-medium flex items-center"
+                        className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-full text-sm font-medium flex items-center transition duration-200 cursor-pointer"
+                        onClick={() => removeTag(tag)}
+                        title={`Click to remove ${tag}`}
                       >
                         {tag}
                         <button
                           type="button"
-                          className="ml-2 hover:text-red-400 focus:outline-none"
-                          onClick={() => setTags(tags.filter(t => t !== tag))}
+                          className="ml-2 hover:text-red-400 focus:outline-none text-lg leading-none"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeTag(tag);
+                          }}
                           aria-label={`Remove ${tag}`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                
+                <div className="bg-gray-900 rounded-lg p-4">
+                  <h2 className="text-xl font-semibold mb-4">Select Contest Types</h2>
+                  <select
+                    multiple
+                    className="w-full p-4 border border-gray-600 bg-gray-800 rounded-lg text-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition duration-200"
+                    onChange={handleContestTypeToggle}
+                    value={selectedContestTypes}
+                    size={5}
+                  >
+                    {contesttypesstrings.map((type) => (
+                      <option 
+                        value={type} 
+                        key={type}
+                        className={`p-2 hover:bg-blue-800 transition duration-150 ${selectedContestTypes.includes(type) ? 'bg-blue-900 text-blue-300' : ''}`}
+                      >
+                        {type} {selectedContestTypes.includes(type) ? '✓' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedContestTypes.length > 0 && (
+                    <p className="text-sm text-gray-400 mt-2">
+                      Click on a selected contest type below to remove it, or click on the type in the list above to deselect it.
+                    </p>
+                  )}
+                </div>
+
+                {selectedContestTypes.length > 0 && (
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {selectedContestTypes.map(type => (
+                      <span
+                        key={type}
+                        className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-full text-sm font-medium flex items-center transition duration-200 cursor-pointer"
+                        onClick={() => removeContestType(type)}
+                        title={`Click to remove ${type}`}
+                      >
+                        {type}
+                        <button
+                          type="button"
+                          className="ml-2 hover:text-red-400 focus:outline-none text-lg leading-none"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeContestType(type);
+                          }}
+                          aria-label={`Remove ${type}`}
                         >
                           ×
                         </button>
@@ -222,7 +386,7 @@ export default function Home() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <select
-                    className="w-full p-4 border border-gray-600 bg-gray-800 rounded-lg text-gray-300"
+                    className="w-full p-4 border border-gray-600 bg-gray-800 rounded-lg text-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition duration-200"
                     onChange={(event) => handleDifficultyChange(event, false)}
                     defaultValue=""
                   >
@@ -236,7 +400,7 @@ export default function Home() {
                   </select>
 
                   <select
-                    className="w-full p-4 border border-gray-600 bg-gray-800 rounded-lg text-gray-300"
+                    className="w-full p-4 border border-gray-600 bg-gray-800 rounded-lg text-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition duration-200"
                     onChange={(event) => handleDifficultyChange(event, true)}
                     defaultValue=""
                   >
@@ -275,7 +439,7 @@ export default function Home() {
                     <div
                       key={index}
                       className="group relative overflow-hidden rounded-xl transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl"
-                      style={{ 
+                      style={{
                         backgroundColor: getProblemColorByRating(problem.rating),
                         boxShadow: `0 0 20px ${getProblemColorByRating(problem.rating)}33`
                       }}
