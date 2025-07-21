@@ -258,7 +258,7 @@ export default function Home() {
       <div className="container mx-auto px-4 py-8">
         {activeTab === 'problems' ? (
           <div className="flex flex-col items-center">
-            <div className="bg-gray-800 border border-gray-700 shadow-xl rounded-xl p-8 text-center max-w-2xl w-full mb-8">
+            <div className="bg-gray-800 border border-gray-700 shadow-xl rounded-xl p-8 text-center max-w-6xl w-full mb-8">
               <Image
                 src="/images.png"
                 width={120}
@@ -270,153 +270,170 @@ export default function Home() {
                 Gimme Problems
               </h1>
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="bg-gray-900 rounded-lg p-4">
-                  <h2 className="text-xl font-semibold mb-4">Select Tags</h2>
-                  <select
-                    multiple
-                    className="w-full p-4 border border-gray-600 bg-gray-800 rounded-lg text-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition duration-200"
-                    onChange={handleTagToggle}
-                    value={tags}
-                    size={6}
-                  >
-                    {[
-                      "*special problem", "2-sat", "binary search", "bitmasks",
-                      "brute force", "combinatorics", "constructive algorithms",
-                      "data structures", "dfs and similar", "divide and conquer",
-                      "dp", "dsu", "expression parsing", "fft", "flow", "games",
-                      "geometry", "graph matchings", "graphs", "greedy", "hashing",
-                      "implementation", "interactive", "math", "matrices",
-                      "number theory", "probabilities", "shortest paths",
-                      "sortings", "strings", "ternary search", "trees",
-                      "two pointers",
-                    ].map((tag) => (
-                      <option
-                        value={tag}
-                        key={tag}
-                        className={`p-2 hover:bg-blue-800 transition duration-150 ${tags.includes(tag) ? 'bg-blue-900 text-blue-300' : ''}`}
-                      >
-                        {tag} {tags.includes(tag) ? '✓' : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {tags.length > 0 && (
-                    <p className="text-sm text-gray-400 mt-2">
+                {/* Tags and Contest Types Side by Side */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Tags Section */}
+                  <div className="bg-gray-900 rounded-lg p-4">
+                    <h2 className="text-xl font-semibold mb-4">Select Tags</h2>
+                    <select
+                      multiple
+                      className="w-full p-4 border border-gray-600 bg-gray-800 rounded-lg text-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition duration-200"
+                      onChange={handleTagToggle}
+                      value={tags}
+                      size={8}
+                    >
+                      {[
+                        "*special problem", "2-sat", "binary search", "bitmasks",
+                        "brute force", "combinatorics", "constructive algorithms",
+                        "data structures", "dfs and similar", "divide and conquer",
+                        "dp", "dsu", "expression parsing", "fft", "flow", "games",
+                        "geometry", "graph matchings", "graphs", "greedy", "hashing",
+                        "implementation", "interactive", "math", "matrices",
+                        "number theory", "probabilities", "shortest paths",
+                        "sortings", "strings", "ternary search", "trees",
+                        "two pointers",
+                      ].map((tag) => (
+                        <option
+                          value={tag}
+                          key={tag}
+                          className={`p-2 hover:bg-blue-800 transition duration-150 ${tags.includes(tag) ? 'bg-blue-900 text-blue-300' : ''}`}
+                        >
+                          {tag} {tags.includes(tag) ? '✓' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {tags.length > 0 && (
+                      <p className="text-sm text-gray-400 mt-2">
                       Click on a selected tag below to remove it, or click on the tag in the list above to deselect it.
-                    </p>
-                  )}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Contest Types Section */}
+                  <div className="bg-gray-900 rounded-lg p-4">
+                    <h2 className="text-xl font-semibold mb-4">Select Contest Types</h2>
+                    <select
+                      multiple
+                      className="w-full p-4 border border-gray-600 bg-gray-800 rounded-lg text-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition duration-200"
+                      onChange={handleContestTypeToggle}
+                      value={selectedContestTypes}
+                      size={8}
+                    >
+                      {contesttypesstrings.map((type) => (
+                        <option 
+                          value={type} 
+                          key={type}
+                          className={`p-2 hover:bg-blue-800 transition duration-150 ${selectedContestTypes.includes(type) ? 'bg-blue-900 text-blue-300' : ''}`}
+                        >
+                          {type} {selectedContestTypes.includes(type) ? '✓' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedContestTypes.length > 0 && (
+                      <p className="text-sm text-gray-400 mt-2">
+                        Click on a selected contest type below to remove it
+                      </p>
+                    )}
+                  </div>
                 </div>
 
+                {/* Selected Tags Display */}
                 {tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {tags.map(tag => (
-                      <span
-                        key={tag}
-                        className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-full text-sm font-medium flex items-center transition duration-200 cursor-pointer"
-                        onClick={() => removeTag(tag)}
-                        title={`Click to remove ${tag}`}
-                      >
-                        {tag}
-                        <button
-                          type="button"
-                          className="ml-2 hover:text-red-400 focus:outline-none text-lg leading-none"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeTag(tag);
-                          }}
-                          aria-label={`Remove ${tag}`}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 text-gray-300">Selected Tags:</h3>
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {tags.map(tag => (
+                        <span
+                          key={tag}
+                          className="bg-blue-600 hover:bg-blue-800 px-3 py-1 rounded-full text-sm font-medium flex items-center transition duration-200 cursor-pointer"
+                          onClick={() => removeTag(tag)}
+                          title={`Click to remove ${tag}`}
                         >
-                          ×
-                        </button>
-                      </span>
-                    ))}
+                          {tag}
+                          <button
+                            type="button"
+                            className="ml-2 hover:text-red-400 focus:outline-none text-lg leading-none"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeTag(tag);
+                            }}
+                            aria-label={`Remove ${tag}`}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
-                
-                <div className="bg-gray-900 rounded-lg p-4">
-                  <h2 className="text-xl font-semibold mb-4">Select Contest Types</h2>
-                  <select
-                    multiple
-                    className="w-full p-4 border border-gray-600 bg-gray-800 rounded-lg text-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition duration-200"
-                    onChange={handleContestTypeToggle}
-                    value={selectedContestTypes}
-                    size={5}
-                  >
-                    {contesttypesstrings.map((type) => (
-                      <option 
-                        value={type} 
-                        key={type}
-                        className={`p-2 hover:bg-blue-800 transition duration-150 ${selectedContestTypes.includes(type) ? 'bg-blue-900 text-blue-300' : ''}`}
-                      >
-                        {type} {selectedContestTypes.includes(type) ? '✓' : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {selectedContestTypes.length > 0 && (
-                    <p className="text-sm text-gray-400 mt-2">
-                      Click on a selected contest type below to remove it, or click on the type in the list above to deselect it.
-                    </p>
-                  )}
-                </div>
 
+                {/* Selected Contest Types Display */}
                 {selectedContestTypes.length > 0 && (
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {selectedContestTypes.map(type => (
-                      <span
-                        key={type}
-                        className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-full text-sm font-medium flex items-center transition duration-200 cursor-pointer"
-                        onClick={() => removeContestType(type)}
-                        title={`Click to remove ${type}`}
-                      >
-                        {type}
-                        <button
-                          type="button"
-                          className="ml-2 hover:text-red-400 focus:outline-none text-lg leading-none"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeContestType(type);
-                          }}
-                          aria-label={`Remove ${type}`}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 text-gray-300">Selected Contest Types:</h3>
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {selectedContestTypes.map(type => (
+                        <span
+                          key={type}
+                          className="bg-blue-600 hover:bg-blue-800 px-3 py-1 rounded-full text-sm font-medium flex items-center transition duration-200 cursor-pointer"
+                          onClick={() => removeContestType(type)}
+                          title={`Click to remove ${type}`}
                         >
-                          ×
-                        </button>
-                      </span>
-                    ))}
+                          {type}
+                          <button
+                            type="button"
+                            className="ml-2 hover:text-red-400 focus:outline-none text-lg leading-none"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeContestType(type);
+                            }}
+                            aria-label={`Remove ${type}`}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <select
-                    className="w-full p-4 border border-gray-600 bg-gray-800 rounded-lg text-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition duration-200"
-                    onChange={(event) => handleDifficultyChange(event, false)}
-                    defaultValue=""
-                  >
-                    <option value="" disabled>Starting Range</option>
-                    {[800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700,
-                      1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2600,
-                      2700, 2800, 2900, 3000, 3100, 3200, 3300, 3400, 3500
-                    ].map((rating) => (
-                      <option key={rating} value={rating}>{rating}</option>
-                    ))}
-                  </select>
+                {/* Difficulty Range Selection */}
+                <div className="bg-gray-900 rounded-lg p-4">
+                  <h2 className="text-xl font-semibold mb-4">Difficulty Range</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <select
+                      className="w-full p-4 border border-gray-600 bg-gray-800 rounded-lg text-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition duration-200"
+                      onChange={(event) => handleDifficultyChange(event, false)}
+                      defaultValue=""
+                    >
+                      <option value="" disabled>Starting Range</option>
+                      {[800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700,
+                        1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2600,
+                        2700, 2800, 2900, 3000, 3100, 3200, 3300, 3400, 3500
+                      ].map((rating) => (
+                        <option key={rating} value={rating}>{rating}</option>
+                      ))}
+                    </select>
 
-                  <select
-                    className="w-full p-4 border border-gray-600 bg-gray-800 rounded-lg text-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition duration-200"
-                    onChange={(event) => handleDifficultyChange(event, true)}
-                    defaultValue=""
-                  >
-                    <option value="" disabled>Ending Range</option>
-                    {[800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700,
-                      1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2600,
-                      2700, 2800, 2900, 3000, 3100, 3200, 3300, 3400, 3500
-                    ].map((rating) => (
-                      <option key={rating} value={rating}>{rating}</option>
-                    ))}
-                  </select>
+                    <select
+                      className="w-full p-4 border border-gray-600 bg-gray-800 rounded-lg text-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none transition duration-200"
+                      onChange={(event) => handleDifficultyChange(event, true)}
+                      defaultValue=""
+                    >
+                      <option value="" disabled>Ending Range</option>
+                      {[800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700,
+                        1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2600,
+                        2700, 2800, 2900, 3000, 3100, 3200, 3300, 3400, 3500
+                      ].map((rating) => (
+                        <option key={rating} value={rating}>{rating}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition duration-300 transform hover:scale-105"
+                  className="w-full py-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-800 transition duration-300 transform hover:scale-105"
                 >
                   Gimme Problems
                 </button>
